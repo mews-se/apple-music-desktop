@@ -580,16 +580,26 @@ function rejectEvent(event) {
 app.on('remote-get-current-window', rejectEvent);
 app.on('remote-get-guest-web-contents', rejectEvent);
 
+// Initialize Widevine, but don't block app startup if it fails,
+// otherwise the app hangs forever without ever creating a window
+async function initWidevine() {
+  try {
+    await components.whenReady();
+  } catch (error) {
+    electronLog.error('WidevineCDM failed to initialize: ' + error);
+    electronLog.warn('Note: Continuing without Widevine, DRM playback may not work');
+  }
+}
+
 // Fire it up
 app.whenReady().then(async() => {
   if (argsCmd.includes('--cdm-info')) {
-    await components.whenReady();
+    await initWidevine();
     console.log('WidevineCDM Component Info:\n');
     console.log(components.status());
     app.quit();
   } else {
-    // Initialize Widevine
-    await components.whenReady();
+    await initWidevine();
     logAppInfo();
     handleTray();
     createWindow();
